@@ -91,7 +91,14 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
 
         <h2 style={{ fontSize: '2rem', marginBottom: 40 }}>Rest & Recover</h2>
         
-        <button className="btn-primary" onClick={() => setIsResting(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        <button 
+          className="btn-primary" 
+          onClick={() => {
+            setIsResting(false);
+            setTimeLeft(60);
+          }} 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+        >
           Skip Rest <Play size={20} fill="currentColor" />
         </button>
       </div>

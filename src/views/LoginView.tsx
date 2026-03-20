@@ -5,11 +5,12 @@ import DumbbellIcon from '../components/DumbbellIcon';
 const LoginView: React.FC<{ onToggle: () => void }> = ({ onToggle }) => {
   const { signIn } = useApp();
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim()) {
-      signIn(username.trim());
+    if (username.trim() && password.trim()) {
+      signIn(username.trim(), password.trim());
     }
   };
 
@@ -42,6 +43,9 @@ const LoginView: React.FC<{ onToggle: () => void }> = ({ onToggle }) => {
             type="password" 
             className="input-field" 
             placeholder="Password" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
           />
         </div>
 

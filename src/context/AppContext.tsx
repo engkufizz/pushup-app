@@ -34,8 +34,8 @@ const DEFAULT_USER_DATA: UserData = {
 };
 
 interface AppContextType extends AppState {
-  signIn: (username: string) => Promise<boolean>;
-  signUp: (username: string) => Promise<boolean>;
+  signIn: (username: string, password: string) => Promise<boolean>;
+  signUp: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   finishPlacement: (reps: number) => Promise<void>;
   completeWorkout: (session: WorkoutSession) => Promise<void>;
@@ -76,33 +76,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync data to Supabase whenever it changes
   const syncToCloud = async (username: string, updatedData: UserData) => {
-    await supabase
+    const { error } = await supabase
       .from('users')
-      .upsert({ 
-        username: username, 
+      .update({ 
         data: updatedData,
         updated_at: new Date().toISOString() 
-      }, { onConflict: 'username' });
+      })
+      .eq('username', username);
+    
+    if (error) {
+      console.error("Cloud Sync Error:", error.message);
+    }
   };
 
-  const signIn = async (username: string) => {
+  const signIn = async (username: string, password: string) => {
     const { data, error } = await supabase
       .from('users')
-      .select('data')
+      .select('data, password')
       .eq('username', username)
       .single();
 
     if (data && !error) {
-      localStorage.setItem('pushup_app_current_user', username);
-      setState({ user: username, ...data.data, loading: false });
-      return true;
+      if (data.password === password) {
+        localStorage.setItem('pushup_app_current_user', username);
+        // Ensure we only put the actual data into state
+        setState({ user: username, ...data.data, loading: false });
+        return true;
+      } else {
+        alert("Incorrect password.");
+        return false;
+      }
     } else {
       alert("Account not found. Please sign up first.");
       return false;
     }
   };
 
-  const signUp = async (username: string) => {
+  const signUp = async (username: string, password: string) => {
     // Check if user exists
     const { data } = await supabase
       .from('users')
@@ -115,15 +125,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    const newUser = { username, data: DEFAULT_USER_DATA };
-    const { error } = await supabase.from('users').insert(newUser);
+    const { error } = await supabase.from('users').insert({
+      username,
+      password,
+      data: DEFAULT_USER_DATA
+    });
 
     if (!error) {
       localStorage.setItem('pushup_app_current_user', username);
       setState({ user: username, ...DEFAULT_USER_DATA, loading: false });
       return true;
+    } else {
+      alert("Error creating account: " + error.message);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
@@ -136,30 +151,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (reps > 20) level = 3;
     else if (reps >= 6) level = 2;
     
-    const updated = {
-      ...state,
+    // Create a clean data object without 'user' or 'loading' fields
+    const updatedUserData: UserData = {
       level,
       maxPushups: reps,
+      totalReps: state.totalReps,
+      sessionsCompleted: state.sessionsCompleted,
+      history: state.history,
       hasCompletedPlacement: true,
     };
     
-    const { user, loading, ...userData } = updated;
-    setState(updated);
-    if (state.user) await syncToCloud(state.user, userData);
+    setState(s => ({ ...s, ...updatedUserData }));
+    if (state.user) await syncToCloud(state.user, updatedUserData);
   };
 
   const completeWorkout = async (session: WorkoutSession) => {
-    const updated = {
-      ...state,
-      history: [session, ...state.history],
-      totalReps: state.totalReps + session.reps,
-      maxPushups: Math.max(state.maxPushups, session.reps),
-      sessionsCompleted: state.sessionsCompleted + 1,
+    const newHistory = [session, ...state.history];
+    const newTotalReps = state.totalReps + session.reps;
+    const newMax = Math.max(state.maxPushups, session.reps);
+    const newSessions = state.sessionsCompleted + 1;
+
+    const updatedUserData: UserData = {
+      level: state.level,
+      maxPushups: newMax,
+      totalReps: newTotalReps,
+      sessionsCompleted: newSessions,
+      history: newHistory,
+      hasCompletedPlacement: state.hasCompletedPlacement,
     };
 
-    const { user, loading, ...userData } = updated;
-    setState(updated);
-    if (state.user) await syncToCloud(state.user, userData);
+    setState(s => ({ ...s, ...updatedUserData }));
+    if (state.user) await syncToCloud(state.user, updatedUserData);
   };
 
   return (
