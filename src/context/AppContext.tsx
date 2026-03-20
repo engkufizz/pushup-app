@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../utils/supabase';
 
 export interface WorkoutSession {
   id: string;
@@ -20,6 +21,7 @@ interface UserData {
 
 interface AppState extends UserData {
   user: string | null;
+  loading: boolean;
 }
 
 const DEFAULT_USER_DATA: UserData = {
@@ -32,94 +34,132 @@ const DEFAULT_USER_DATA: UserData = {
 };
 
 interface AppContextType extends AppState {
-  signIn: (username: string) => void;
-  signUp: (username: string) => void;
+  signIn: (username: string) => Promise<boolean>;
+  signUp: (username: string) => Promise<boolean>;
   logout: () => void;
-  finishPlacement: (reps: number) => void;
-  completeWorkout: (session: WorkoutSession) => void;
+  finishPlacement: (reps: number) => Promise<void>;
+  completeWorkout: (session: WorkoutSession) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Global store of all users
-  const [allUsersData, setAllUsersData] = useState<Record<string, UserData>>(() => {
-    const saved = localStorage.getItem('pushup_app_users');
-    return saved ? JSON.parse(saved) : {};
+  const [state, setState] = useState<AppState>({
+    user: localStorage.getItem('pushup_app_current_user'),
+    ...DEFAULT_USER_DATA,
+    loading: true
   });
 
-  // Current session state
-  const [state, setState] = useState<AppState>(() => {
-    const lastUser = localStorage.getItem('pushup_app_current_user');
-    const allUsers = JSON.parse(localStorage.getItem('pushup_app_users') || '{}');
-    if (lastUser && allUsers[lastUser]) {
-      return { user: lastUser, ...allUsers[lastUser] };
-    }
-    return { user: null, ...DEFAULT_USER_DATA };
-  });
-
-  // Save specific user data whenever their session data changes
+  // Load user data from Supabase on start or user change
   useEffect(() => {
-    if (state.user) {
-      const updatedData: UserData = {
-        level: state.level,
-        maxPushups: state.maxPushups,
-        totalReps: state.totalReps,
-        sessionsCompleted: state.sessionsCompleted,
-        history: state.history,
-        hasCompletedPlacement: state.hasCompletedPlacement,
-      };
-      
-      const newAllUsers = { ...allUsersData, [state.user]: updatedData };
-      setAllUsersData(newAllUsers);
-      localStorage.setItem('pushup_app_users', JSON.stringify(newAllUsers));
-      localStorage.setItem('pushup_app_current_user', state.user);
-    } else {
-      localStorage.removeItem('pushup_app_current_user');
-    }
-  }, [state.level, state.maxPushups, state.totalReps, state.sessionsCompleted, state.history, state.hasCompletedPlacement, state.user]);
+    const loadUserData = async () => {
+      if (state.user) {
+        setState(s => ({ ...s, loading: true }));
+        const { data, error } = await supabase
+          .from('users')
+          .select('data')
+          .eq('username', state.user)
+          .single();
 
-  const signIn = (username: string) => {
-    const existingData = allUsersData[username];
-    if (existingData) {
-      setState({ user: username, ...existingData });
+        if (data && !error) {
+          setState(s => ({ ...s, ...data.data, loading: false }));
+        } else {
+          setState(s => ({ ...s, loading: false }));
+        }
+      } else {
+        setState(s => ({ ...s, loading: false }));
+      }
+    };
+
+    loadUserData();
+  }, [state.user]);
+
+  // Sync data to Supabase whenever it changes
+  const syncToCloud = async (username: string, updatedData: UserData) => {
+    await supabase
+      .from('users')
+      .upsert({ 
+        username: username, 
+        data: updatedData,
+        updated_at: new Date().toISOString() 
+      }, { onConflict: 'username' });
+  };
+
+  const signIn = async (username: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('data')
+      .eq('username', username)
+      .single();
+
+    if (data && !error) {
+      localStorage.setItem('pushup_app_current_user', username);
+      setState({ user: username, ...data.data, loading: false });
+      return true;
     } else {
-      // In a real app, you'd check a password and fail. 
-      // Here, if user doesn't exist, we'll initialize them.
-      setState({ user: username, ...DEFAULT_USER_DATA });
+      alert("Account not found. Please sign up first.");
+      return false;
     }
   };
 
-  const signUp = (username: string) => {
-    // Initialize new user with default data
-    setState({ user: username, ...DEFAULT_USER_DATA });
+  const signUp = async (username: string) => {
+    // Check if user exists
+    const { data } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (data) {
+      alert("Username already exists.");
+      return false;
+    }
+
+    const newUser = { username, data: DEFAULT_USER_DATA };
+    const { error } = await supabase.from('users').insert(newUser);
+
+    if (!error) {
+      localStorage.setItem('pushup_app_current_user', username);
+      setState({ user: username, ...DEFAULT_USER_DATA, loading: false });
+      return true;
+    }
+    return false;
   };
 
   const logout = () => {
-    setState({ user: null, ...DEFAULT_USER_DATA });
+    localStorage.removeItem('pushup_app_current_user');
+    setState({ user: null, ...DEFAULT_USER_DATA, loading: false });
   };
 
-  const finishPlacement = (reps: number) => {
+  const finishPlacement = async (reps: number) => {
     let level = 1;
     if (reps > 20) level = 3;
     else if (reps >= 6) level = 2;
     
-    setState(s => ({
-      ...s,
+    const updated = {
+      ...state,
       level,
       maxPushups: reps,
       hasCompletedPlacement: true,
-    }));
+    };
+    
+    const { user, loading, ...userData } = updated;
+    setState(updated);
+    if (state.user) await syncToCloud(state.user, userData);
   };
 
-  const completeWorkout = (session: WorkoutSession) => {
-    setState(s => ({
-      ...s,
-      history: [session, ...s.history],
-      totalReps: s.totalReps + session.reps,
-      maxPushups: Math.max(s.maxPushups, session.reps),
-      sessionsCompleted: s.sessionsCompleted + 1,
-    }));
+  const completeWorkout = async (session: WorkoutSession) => {
+    const updated = {
+      ...state,
+      history: [session, ...state.history],
+      totalReps: state.totalReps + session.reps,
+      maxPushups: Math.max(state.maxPushups, session.reps),
+      sessionsCompleted: state.sessionsCompleted + 1,
+    };
+
+    const { user, loading, ...userData } = updated;
+    setState(updated);
+    if (state.user) await syncToCloud(state.user, userData);
   };
 
   return (

@@ -5,10 +5,10 @@ import { ChevronRight } from 'lucide-react';
 
 const PlacementTestView: React.FC = () => {
   const { finishPlacement } = useApp();
-  const [reps, setReps] = useState(0);
+  const [reps, setReps] = useState<string>('');
 
   const handleSubmit = () => {
-    finishPlacement(reps);
+    finishPlacement(parseInt(reps) || 0);
   };
 
   return (
@@ -36,7 +36,8 @@ const PlacementTestView: React.FC = () => {
         <input 
           type="number" 
           value={reps} 
-          onChange={(e) => setReps(parseInt(e.target.value) || 0)}
+          placeholder="0"
+          onChange={(e) => setReps(e.target.value)}
           style={{ 
             background: 'transparent', 
             border: 'none', 

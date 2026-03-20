@@ -8,7 +8,9 @@ const SignUpView: React.FC<{ onToggle: () => void }> = ({ onToggle }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim()) signUp(username);
+    if (username.trim()) {
+      signUp(username.trim());
+    }
   };
 
   return (

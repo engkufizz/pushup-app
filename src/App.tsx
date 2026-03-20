@@ -12,9 +12,17 @@ import './styles/theme.css';
 type View = 'dashboard' | 'workout' | 'history';
 
 function App() {
-  const { user, hasCompletedPlacement, logout } = useApp();
+  const { user, hasCompletedPlacement, logout, loading } = useApp();
   const [isLogin, setIsLogin] = useState(true);
   const [currentView, setCurrentView] = useState<View>('dashboard');
+
+  if (loading) {
+    return (
+      <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <p style={{ color: 'var(--primary-green)', fontWeight: '700' }}>Loading your journey...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
