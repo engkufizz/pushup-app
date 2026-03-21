@@ -17,6 +17,7 @@ interface UserData {
   sessionsCompleted: number;
   history: WorkoutSession[];
   hasCompletedPlacement: boolean;
+  restDuration: number;
 }
 
 interface AppState extends UserData {
@@ -31,6 +32,7 @@ const DEFAULT_USER_DATA: UserData = {
   sessionsCompleted: 0,
   history: [],
   hasCompletedPlacement: false,
+  restDuration: 60,
 };
 
 interface AppContextType extends AppState {
@@ -39,6 +41,9 @@ interface AppContextType extends AppState {
   logout: () => void;
   finishPlacement: (reps: number) => Promise<void>;
   completeWorkout: (session: WorkoutSession) => Promise<void>;
+  updateSettings: (settings: Partial<UserData>) => Promise<void>;
+  resetProgress: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -62,7 +67,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .single();
 
         if (data && !error) {
-          setState(s => ({ ...s, ...data.data, loading: false }));
+          // Merge defaults to ensure missing keys (like restDuration) are filled
+          setState(s => ({ 
+            ...s, 
+            ...DEFAULT_USER_DATA, 
+            ...data.data, 
+            loading: false 
+          }));
         } else {
           setState(s => ({ ...s, loading: false }));
         }
@@ -99,8 +110,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (data && !error) {
       if (data.password === password) {
         localStorage.setItem('pushup_app_current_user', username);
-        // Ensure we only put the actual data into state
-        setState({ user: username, ...data.data, loading: false });
+        // Merge defaults with fetched data to ensure new fields (like restDuration) exist for old users
+        setState({ 
+          user: username, 
+          ...DEFAULT_USER_DATA, // Start with defaults
+          ...data.data,        // Override with DB data
+          loading: false 
+        });
         return true;
       } else {
         alert("Incorrect password.");
@@ -146,12 +162,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setState({ user: null, ...DEFAULT_USER_DATA, loading: false });
   };
 
+  const updateSettings = async (settings: Partial<UserData>) => {
+    const updatedUserData: UserData = {
+      level: settings.level ?? state.level,
+      maxPushups: settings.maxPushups ?? state.maxPushups,
+      totalReps: settings.totalReps ?? state.totalReps,
+      sessionsCompleted: settings.sessionsCompleted ?? state.sessionsCompleted,
+      history: settings.history ?? state.history,
+      hasCompletedPlacement: settings.hasCompletedPlacement ?? state.hasCompletedPlacement,
+      restDuration: settings.restDuration ?? state.restDuration,
+    };
+
+    setState(s => ({ ...s, ...updatedUserData }));
+    if (state.user) await syncToCloud(state.user, updatedUserData);
+  };
+
+  const resetProgress = async () => {
+    const updatedUserData: UserData = {
+      ...DEFAULT_USER_DATA,
+      restDuration: state.restDuration // Keep rest duration even on reset
+    };
+    setState(s => ({ ...s, ...updatedUserData }));
+    if (state.user) await syncToCloud(state.user, updatedUserData);
+  };
+
+  const deleteAccount = async () => {
+    if (!state.user) return;
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('username', state.user);
+    
+    if (!error) {
+      logout();
+    } else {
+      alert("Error deleting account: " + error.message);
+    }
+  };
+
   const finishPlacement = async (reps: number) => {
     let level = 1;
     if (reps > 20) level = 3;
     else if (reps >= 6) level = 2;
     
-    // Create a clean data object without 'user' or 'loading' fields
     const updatedUserData: UserData = {
       level,
       maxPushups: reps,
@@ -159,6 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionsCompleted: state.sessionsCompleted,
       history: state.history,
       hasCompletedPlacement: true,
+      restDuration: state.restDuration,
     };
     
     setState(s => ({ ...s, ...updatedUserData }));
@@ -178,6 +232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionsCompleted: newSessions,
       history: newHistory,
       hasCompletedPlacement: state.hasCompletedPlacement,
+      restDuration: state.restDuration,
     };
 
     setState(s => ({ ...s, ...updatedUserData }));
@@ -185,7 +240,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ ...state, signIn, signUp, logout, finishPlacement, completeWorkout }}>
+    <AppContext.Provider value={{ 
+      ...state, 
+      signIn, 
+      signUp, 
+      logout, 
+      finishPlacement, 
+      completeWorkout,
+      updateSettings,
+      resetProgress,
+      deleteAccount
+    }}>
       {children}
     </AppContext.Provider>
   );

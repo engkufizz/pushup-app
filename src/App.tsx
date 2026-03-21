@@ -6,13 +6,14 @@ import PlacementTestView from './views/PlacementTestView';
 import DashboardView from './views/DashboardView';
 import WorkoutView from './views/WorkoutView';
 import HistoryView from './views/HistoryView';
-import { LayoutGrid, Dumbbell, History, LogOut } from 'lucide-react';
+import SettingsView from './views/SettingsView';
+import { LayoutGrid, Dumbbell, History, Settings } from 'lucide-react';
 import './styles/theme.css';
 
-type View = 'dashboard' | 'workout' | 'history';
+type View = 'dashboard' | 'workout' | 'history' | 'settings';
 
 function App() {
-  const { user, hasCompletedPlacement, logout, loading } = useApp();
+  const { user, hasCompletedPlacement, loading } = useApp();
   const [isLogin, setIsLogin] = useState(true);
   const [currentView, setCurrentView] = useState<View>('dashboard');
 
@@ -52,6 +53,8 @@ function App() {
         return <WorkoutView onComplete={() => setCurrentView('dashboard')} />;
       case 'history':
         return <HistoryView />;
+      case 'settings':
+        return <SettingsView onBack={() => setCurrentView('dashboard')} />;
       default:
         return <DashboardView onStartWorkout={() => setCurrentView('workout')} />;
     }
@@ -87,12 +90,12 @@ function App() {
           <span>History</span>
         </button>
         <button 
-          className="nav-item"
-          onClick={logout}
+          className={`nav-item ${currentView === 'settings' ? 'active' : ''}`}
+          onClick={() => setCurrentView('settings')}
           style={{ background: 'none' }}
         >
-          <LogOut size={24} />
-          <span>Logout</span>
+          <Settings size={24} />
+          <span>Settings</span>
         </button>
       </nav>
     </div>

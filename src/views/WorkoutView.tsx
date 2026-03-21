@@ -4,10 +4,10 @@ import { CheckCircle, Minus, Plus, Play } from 'lucide-react';
 import { getPlanForDay } from '../utils/plans';
 
 const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const { level, sessionsCompleted, completeWorkout } = useApp();
+  const { level, sessionsCompleted, completeWorkout, restDuration } = useApp();
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const [isResting, setIsResting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(restDuration || 60);
   const [repsCompleted, setRepsCompleted] = useState(0);
   const [sessionSets, setSessionSets] = useState<number[]>([]);
   const [isFinished, setIsFinished] = useState(false);
@@ -27,10 +27,10 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     } else if (timeLeft === 0) {
       setIsResting(false);
-      setTimeLeft(60);
+      setTimeLeft(restDuration || 60);
     }
     return () => clearInterval(timer);
-  }, [isResting, timeLeft]);
+  }, [isResting, timeLeft, restDuration]);
 
   const handleCompleteSet = () => {
     const newSets = [...sessionSets, repsCompleted];
@@ -49,6 +49,7 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
       });
     } else {
       setIsResting(true);
+      setTimeLeft(restDuration || 60);
       setCurrentSetIndex(prev => prev + 1);
     }
   };
@@ -71,7 +72,8 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   }
 
   if (isResting) {
-    const progress = (timeLeft / 60) * 100;
+    const duration = restDuration || 60;
+    const progress = (timeLeft / duration) * 100;
     return (
       <div className="main-content" style={{ textAlign: 'center' }}>
         <h3 style={{ fontSize: '2.2rem', fontWeight: '900', marginBottom: 5 }}>WEEK {week} // <span style={{ color: 'var(--primary-green)' }}>DAY {day}</span></h3>
@@ -95,7 +97,7 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
           className="btn-primary" 
           onClick={() => {
             setIsResting(false);
-            setTimeLeft(60);
+            setTimeLeft(duration);
           }} 
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
         >
