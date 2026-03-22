@@ -55,21 +55,6 @@ const PlacementTestView: React.FC = () => {
       <button className="btn-primary" onClick={handleSubmit} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
         Set My Level <ChevronRight size={20} />
       </button>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 80, padding: '0 10px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontWeight: '700', marginBottom: 5 }}>Level 1</p>
-          <p style={{ color: 'var(--text-gray)', fontSize: '0.8rem' }}>&lt; 5 Reps</p>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontWeight: '700', marginBottom: 5 }}>Level 2</p>
-          <p style={{ color: 'var(--text-gray)', fontSize: '0.8rem' }}>6-20 Reps</p>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontWeight: '700', marginBottom: 5 }}>Level 3</p>
-          <p style={{ color: 'var(--text-gray)', fontSize: '0.8rem' }}>21+ Reps</p>
-        </div>
-      </div>
     </div>
   );
 };

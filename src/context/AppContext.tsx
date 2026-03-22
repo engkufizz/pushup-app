@@ -202,8 +202,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const finishPlacement = async (reps: number) => {
     let level = 1;
-    if (reps > 20) level = 3;
-    else if (reps >= 6) level = 2;
+    if (reps > 40) level = 9;
+    else if (reps >= 36) level = 8;
+    else if (reps >= 31) level = 7;
+    else if (reps >= 26) level = 6;
+    else if (reps >= 21) level = 5;
+    else if (reps >= 16) level = 4;
+    else if (reps >= 12) level = 3;
+    else if (reps >= 9) level = 2;
     
     const updatedUserData: UserData = {
       level,
