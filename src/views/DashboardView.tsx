@@ -68,9 +68,9 @@ const ActivityChart = ({ history, maxPushups }: { history: any[], maxPushups: nu
   );
 };
 
-const DashboardView: React.FC<{ onStartWorkout: () => void }> = ({ onStartWorkout }) => {
+const DashboardView: React.FC<{ onStartWorkout: () => void; onStartTest: () => void }> = ({ onStartWorkout, onStartTest }) => {
   const { user, level, maxPushups, totalReps, sessionsCompleted, history } = useApp();
-  const { week, day } = getPlanForDay(level, sessionsCompleted);
+  const { week, day, isTest } = getPlanForDay(level, sessionsCompleted);
 
   const StatCard = ({ icon: Icon, label, value, subValue }: any) => (
     <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '16px' }}>
@@ -105,12 +105,24 @@ const DashboardView: React.FC<{ onStartWorkout: () => void }> = ({ onStartWorkou
           <h2 style={{ fontSize: '1.4rem' }}>Next Session</h2>
         </div>
         
-        <h3 style={{ fontSize: '3rem', fontWeight: '900', marginBottom: 10 }}>WEEK {week} / <span style={{ color: 'var(--text-gray)' }}>DAY {day}</span></h3>
-        <p style={{ color: 'var(--text-gray)', marginBottom: 25 }}>Your next programmed session is ready. Get stronger today.</p>
-        
-        <button className="btn-primary" onClick={onStartWorkout}>
-          Start Workout
-        </button>
+        {isTest ? (
+          <>
+            <h3 style={{ fontSize: '3rem', fontWeight: '900', marginBottom: 10 }}>LEVEL {level} <span style={{ color: 'var(--primary-green)' }}>TEST</span></h3>
+            <p style={{ color: 'var(--text-gray)', marginBottom: 25 }}>You've completed the workouts. Time to test your max reps!</p>
+            <button className="btn-primary" onClick={onStartTest}>
+              Start Test
+            </button>
+          </>
+        ) : (
+          <>
+            <h3 style={{ fontSize: '3rem', fontWeight: '900', marginBottom: 10 }}>WEEK {week} / <span style={{ color: 'var(--text-gray)' }}>DAY {day}</span></h3>
+            <p style={{ color: 'var(--text-gray)', marginBottom: 25 }}>Your next programmed session is ready. Get stronger today.</p>
+            
+            <button className="btn-primary" onClick={onStartWorkout}>
+              Start Workout
+            </button>
+          </>
+        )}
       </div>
 
       <div style={{ marginTop: 30 }}>

@@ -5,12 +5,13 @@ import SignUpView from './views/SignUpView';
 import PlacementTestView from './views/PlacementTestView';
 import DashboardView from './views/DashboardView';
 import WorkoutView from './views/WorkoutView';
+import LevelTestView from './views/LevelTestView';
 import HistoryView from './views/HistoryView';
 import SettingsView from './views/SettingsView';
 import { LayoutGrid, Dumbbell, History, Settings } from 'lucide-react';
 import './styles/theme.css';
 
-type View = 'dashboard' | 'workout' | 'history' | 'settings';
+type View = 'dashboard' | 'workout' | 'history' | 'settings' | 'levelTest';
 
 function App() {
   const { user, hasCompletedPlacement, loading } = useApp();
@@ -48,15 +49,27 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <DashboardView onStartWorkout={() => setCurrentView('workout')} />;
+        return (
+          <DashboardView 
+            onStartWorkout={() => setCurrentView('workout')} 
+            onStartTest={() => setCurrentView('levelTest')} 
+          />
+        );
       case 'workout':
         return <WorkoutView onComplete={() => setCurrentView('dashboard')} />;
+      case 'levelTest':
+        return <LevelTestView onComplete={() => setCurrentView('dashboard')} />;
       case 'history':
         return <HistoryView />;
       case 'settings':
         return <SettingsView onBack={() => setCurrentView('dashboard')} />;
       default:
-        return <DashboardView onStartWorkout={() => setCurrentView('workout')} />;
+        return (
+          <DashboardView 
+            onStartWorkout={() => setCurrentView('workout')} 
+            onStartTest={() => setCurrentView('levelTest')} 
+          />
+        );
     }
   };
 

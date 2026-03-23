@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { CheckCircle, Minus, Plus, Play } from 'lucide-react';
+import { CheckCircle, Minus, Plus, Play, Clock } from 'lucide-react';
 import { getPlanForDay } from '../utils/plans';
 
 const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
@@ -11,11 +11,15 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [repsCompleted, setRepsCompleted] = useState(0);
   const [sessionSets, setSessionSets] = useState<number[]>([]);
   const [isFinished, setIsFinished] = useState(false);
+  const [finishedRestHours, setFinishedRestHours] = useState(48);
+  const [finishedWeek, setFinishedWeek] = useState(1);
+  const [finishedDay, setFinishedDay] = useState(1);
 
   const { week, day, plan } = getPlanForDay(level, sessionsCompleted);
-  const sets = plan.sets;
+  // Guard against plan being null if somehow we are on a test day (shouldn't happen via routing but good for safety)
+  const sets = plan?.sets || [];
   const isLastSet = currentSetIndex === sets.length - 1;
-  const targetReps = sets[currentSetIndex];
+  const targetReps = sets[currentSetIndex] || 0;
 
   useEffect(() => {
     setRepsCompleted(targetReps);
@@ -24,7 +28,7 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   useEffect(() => {
     let timer: any;
     if (isResting && timeLeft > 0) {
-      timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+      timer = setInterval(() => setTimeLeft((prev: number) => prev - 1), 1000);
     } else if (timeLeft === 0) {
       setIsResting(false);
       setTimeLeft(restDuration || 60);
@@ -37,6 +41,9 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     setSessionSets(newSets);
     
     if (isLastSet) {
+      setFinishedRestHours(plan?.restHours || 48);
+      setFinishedWeek(week);
+      setFinishedDay(day);
       setIsFinished(true);
       const totalReps = newSets.reduce((a, b) => a + b, 0);
       completeWorkout({
@@ -57,13 +64,31 @@ const WorkoutView: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   if (isFinished) {
     return (
       <div className="main-content" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
+        <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', width: '100px', height: '100px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 30 }}>
           <CheckCircle size={60} color="var(--primary-green)" />
         </div>
         <h1 style={{ fontSize: '2.5rem', marginBottom: 15 }}>Workout Complete!</h1>
-        <p style={{ color: 'var(--text-gray)', fontSize: '1.2rem', marginBottom: 50 }}>
-          Great job! You finished Week {week}, Day {day}.
+        <p style={{ color: 'var(--text-gray)', fontSize: '1.2rem', marginBottom: 30 }}>
+          Great job! You finished Week {finishedWeek}, Day {finishedDay}.
         </p>
+
+        <div style={{ 
+          backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+          padding: '20px 30px', 
+          borderRadius: '12px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '15px',
+          marginBottom: 40,
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <Clock size={24} color="var(--primary-green)" />
+          <div style={{ textAlign: 'left' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-gray)', fontWeight: '700', textTransform: 'uppercase' }}>Recovery Time</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: '800' }}>REST {finishedRestHours} HOURS</p>
+          </div>
+        </div>
+
         <button className="btn-primary" onClick={onComplete}>
           Back to Dashboard
         </button>

@@ -17,14 +17,14 @@ const HistoryView: React.FC = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '20px' }}>
-          {history.map((session, index) => {
+          {history.map((session: any, index: number) => {
             // Calculate a fallback set list if data is missing for old sessions
             // This is just to make the UI look complete for older data.
             let displaySets = session.sets;
             if (!displaySets || displaySets.length === 0) {
               const sessionIndexFromEnd = history.length - 1 - index;
               const { plan } = getPlanForDay(level, sessionIndexFromEnd);
-              displaySets = plan.sets;
+              displaySets = plan?.sets || [];
             }
 
             return (
@@ -59,7 +59,7 @@ const HistoryView: React.FC = () => {
                   </div>
                   
                   <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '5px' }}>
-                    {displaySets.map((reps, i) => (
+                    {displaySets.map((reps: number, i: number) => (
                       <div key={i} style={{ 
                         width: '40px', 
                         height: '40px', 
